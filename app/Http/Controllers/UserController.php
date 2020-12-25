@@ -44,7 +44,7 @@ class UserController extends Controller
 
     public function store(Request $request){
 		//Recoger datos de usuario por POST
-		$json = $request->input('json');
+		$json = $request->input('json',null);
 		$params = json_decode($json); //objeto
 		$params_array = json_decode($json, true); //Array
    	
@@ -152,9 +152,13 @@ class UserController extends Controller
     	$jwtAuth = new \App\Helpers\jwtAuth();
     	$checkToken = $jwtAuth->checkToken($token);
     	//Recoger datos por POST
-		$json = $request->input('json', null);
+		$json = $request->all();
+
 		dd($json);
 		$params_array = json_decode($json, true);
+		
+
+		var_dump($params_array); die();
 
     	if($checkToken && !empty($params_array)){    		
     		//Sacar usuario identificado
