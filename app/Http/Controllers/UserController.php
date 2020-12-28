@@ -151,12 +151,11 @@ class UserController extends Controller
     	$token = $request->header('Authorization');
     	$jwtAuth = new \App\Helpers\jwtAuth();
     	$checkToken = $jwtAuth->checkToken($token);
-    	//Recoger datos por POST
-		$json = $request->all();
-
-		dd($json);
-		$params_array = json_decode($json, true);
 		
+		//Recoger datos por POST
+		$json = $request->input('json', null);
+    	$params = json_decode($json); //objeto
+    	$params_array = json_decode($json, true); //Array
 
 		var_dump($params_array); die();
 
