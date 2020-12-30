@@ -22,17 +22,20 @@ class UserSeeder extends Seeder
     public function run()
     {
         $faker = Faker::create();
-        
-        DB::table('users')->insert([
-            'firstname' => $faker->firstName,
-            'lastname' => $faker->lastName,
-            'email' => $faker->email,
-            'phone_number' => $faker->phoneNumber,
-            'default_lang' => 'es',
-            'active' => 1,
-            'password' => Hash::make('password'),
-            'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
-            'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
-        ]);
+
+        for($i =0; $i <3; $i ++){
+            
+            DB::table('users')->insert([
+                'firstname' => $faker->firstName,
+                'lastname' => $faker->lastName,
+                'email' => $faker->email,
+                'phone_number' => $faker->phoneNumber,
+                'default_lang' => 'es',
+                'active' => 1,
+                'password' => Hash::make('password'),
+                'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
+                'updated_at' => Carbon::now()->format('Y-m-d H:i:s')
+            ]);
+        }
     }
 }

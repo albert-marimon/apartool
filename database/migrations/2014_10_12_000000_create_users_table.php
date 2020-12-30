@@ -17,7 +17,7 @@ class CreateUsersTable extends Migration
             $table->id()->autoincrement();
             $table->string('firstname');
             $table->string('lastname');
-            $table->string('email')->unique();
+            $table->string('email'); //No he podido dejarlo como ->unique(), ya que con el metodo update y Validation->ignore no me dejaba actualizar el valor
             $table->timestamp('email_verified_at')->nullable();
             $table->string('phone_number');
             $table->string('default_lang');
