@@ -32,8 +32,8 @@ class JwtAuth{
 			$token = array(
 				'sub'		=> $user->id,
 				'email'		=> $user->email,
-				'name'		=> $user->name,
-				'surname'	=> $user->surname,
+				'firstname'	=> $user->firstname,
+				'lastname'	=> $user->lastname,
 				'iat'		=> time(),
 				'exp'		=> time() + (7*24*60*60)
 			);
