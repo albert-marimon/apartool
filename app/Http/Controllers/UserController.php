@@ -44,7 +44,7 @@ class UserController extends Controller
 
     public function store(Request $request){
 		//Recoger datos de usuario por POST
-		$json = $request->input('json',null);
+		$json = $request->getContent();
 		$params = json_decode($json); //objeto
 		$params_array = json_decode($json, true); //Array
    	
@@ -56,7 +56,7 @@ class UserController extends Controller
 			//Validar datos
 	    	$validate = Validator::make($params_array, [
 	    		'firstname'		=> 'required|alpha',
-	    		'lastname'		=> 'required|alpha',
+	    		'lastname'		=> 'required',
 	    		'email'			=> 'required|email|unique:users',
 				'password'		=> 'required',
 				'phone_number'	=> 'required|alpha_num',
@@ -114,38 +114,56 @@ class UserController extends Controller
     	$jwtAuth = new \App\Helpers\jwtAuth();
 
     	//Recibir datos por POST
-    	$json = $request->input('json', null);
+		// $json = $request->input('json', null);
+		$json = $request->getContent();
     	$params = json_decode($json); //objeto
-    	$params_array = json_decode($json, true); //Array
-
-    	//Validar datos
+		$params_array = json_decode($json, true); //Array
+				
+		//Validar datos
     	$validate = Validator::make($params_array, [
     		'email'		=> 'required|email',
     		'password'	=> 'required'
     	]);
-
+		
     	if($validate->fails()){ //Validación ha fallado
-	    		$signup = array(
-		    		'status' 	=> 'error',
-		    		'code'		=> 404,
-		    		'message' 	=> 'El usuario no se ha podido identificar',
-		    		'errors' 	=> $validate->errors()
-		    	);
+			$data = array(
+				'status' 	=> 'error',
+				'code'		=> 404,
+				'message' 	=> 'El usuario no se ha podido identificar',
+				'errors' 	=> $validate->errors()
+			);
     	} else { //Validación pasada correctamente
 			//Cifrar la password
     		$pwd = hash('sha256', $params->password);
- 			
+			 
+			//Get de usuario
+			$user = User::where('email',$params->email)->where('password', $pwd)->first();
  			//Devolver token o datos
     		$signup = $jwtAuth->signup($params->email, $pwd);
     		if(isset($params->gettoken)){
     			$signup = $jwtAuth->signup($params->email, $pwd, true);
-    		}
-    	}
-
-    	return response()->json($signup, 200);
+			}
+			
+			if(is_object($user)){
+				$data = array (
+					'status' 	=> 'success',
+					'code'		=> 200,
+					'message'	=> 'Login correcto',
+					'token'		=> $signup,
+					'user'		=> $user
+				);
+			} else {
+				$data = array (
+					'status' 	=> 'error',
+					'code'		=> 200,
+					'message'	=> 'Login incorrecto',
+				);
+			}
+		}
+    	return response()->json($data, $data['code']);
     }
 	
-    public function update(Request $request){
+    public function update($id, Request $request){
 
     	//Comprobar si el usuario está identificado
     	$token = $request->header('Authorization');
@@ -153,45 +171,50 @@ class UserController extends Controller
     	$checkToken = $jwtAuth->checkToken($token);
 		
 		//Recoger datos por POST
-		$json = $request->input('json', null);
+		$json = $request->getContent();
     	$params = json_decode($json); //objeto
     	$params_array = json_decode($json, true); //Array
 
-		var_dump($params_array); die();
-
     	if($checkToken && !empty($params_array)){    		
     		//Sacar usuario identificado
-    		$user = $jwtAuth->checkToken($token, true); 
+    		$user = User::where('id',$id)->first();
 
-    		//Validar datos
+			//Validar datos
 	    	$validate = Validator::make($params_array, [
 				'firstname'		=> 'required|alpha',
-	    		'lastname'		=> 'required|alpha',
-	    		'email'			=> 'required|email|unique:users, '.$user->sub,
-				'password'		=> 'required',
-				'phone_number'	=> 'required|alpha_num',
+	    		'lastname'		=> 'required',
+	    		'email'			=> 'required|unique:users,email, '.$user->id,
+				'phone_number'	=> 'required',
 				'default_lang'	=> 'required|alpha',
 				'active'		=> 'required|boolean'
 	    	]);
 
-    		//Quitar los campos que no quiero actualizar
+    		//Quito los campos que no quiero actualizar
 	    	unset($params_array['id']);
 	    	unset($params_array['password']);
 	    	unset($params_array['created_at']);
-	    	unset($params_array['remember_token']);
+			unset($params_array['remember_token']);
+			
+			if($validate->fails()){
+				$data = array(
+					'status' 	=> 'error',
+					'code'		=> 200,
+					'message' 	=> 'Error en la validación de campos',
+					'errors' 	=> $validate->errors()
+				);
+			} else {
+				//Actualizar usuario en la BD
+				$user_update = User::where('id',$id)->update($params_array);
 
-    		//Actualizar usuario en la BD
-	    	$user_update = User::where('id',$user->sub)->update($params_array);
-
-    		//Devolver array de resultado
-    		$data = array(
-    			'code' 		=> 200,
-    			'status' 	=> 'success',
-    			'user'		=> $user,
-    			'changes'	=> $params_array
-    		);
-
-
+			
+				//Devolver array de resultado
+				$data = array(
+					'code' 		=> 200,
+					'status' 	=> 'success',
+					'user'		=> $user,
+					'changes'	=> $params_array
+				);
+			}
     	} else {
     		//Mensaje de error
     		$data = array(
@@ -202,56 +225,38 @@ class UserController extends Controller
     	}
 
     	return response()->json($data, $data['code']);
-    }
-	/*
-    public function upload(Request $request){
-    	//Recoger datos
-    	$image = $request->file('file0');
+	}
+	
+	public function destroy($id, Request $request){
+    	$user = User::where('id',$id)->first();
 
-    	//Validación de imagen con libreria de Laravel
-    	$validate = Validator::make($request->all(), [
-    		'file0' 	=> 'required|image|mimes:jpg,jpeg,png,gif'
-    	]);
+    	if(!empty($user)){ 
+			$user->active = 0;
+			$user->save(); //Desactivar usuario
 
-    	//Guardar imagen
-    	if(!$image || $validate->fails()){
-    		$data = array(
-				'code' 		=> 400,
-				'status' 	=> 'error',
-				'message'	=> 'Error al subir imagen.'
-			);
-    	}else{
-    		$image_name = time().$image->getClientOriginalName();
-    		Storage::disk('users')->put($image_name, \File::get($image));
-
-			$data = array(
-				'code'		=> 200,
-				'status' 	=> 'success',
-				'image' 	=> $image_name
-			);
-    		
-    	}
-
-	   	//return response($data, $data['code'])->header('Content-Type', 'text/plain');
-	   	return response()->json($data, $data['code']);
-    }
-
-    public function getImage($filename){
-    	$isset = Storage::disk('users')->exists($filename);
-    	if($isset){
-    		$file = Storage::disk('users')->get($filename);
-    		
-    		return new Response($file, 200); //Devuelve un código para usar con <img>
+	    	$data = [
+				'code' 		=> 200,
+				'status'	=> 'success',
+				'user'		=> $user
+			];
     	} else {
-    		$data = array(
-				'code' 		=> 404,
-				'status' 	=> 'error',
-				'message'	=> 'La imagen no existe.'
-			);
-
-			return response()->json($data, $data['code']);
+    		$data = [
+				'code' 		=> 400,
+				'status'	=> 'error',
+				'post'	=> 'No se puede desactivar el usuario con id '. $id
+			];
     	}
-    	
-    }*/
 
+    	return response()->json($data, $data['code']);
+	}
+	
+	public function showDesactivatedUsers(){
+		$users = User::all()->where('active',0);
+
+		return response()->json([
+    		'code'		=> 200,
+    		'status'	=> 'success',
+    		'users' 	=> $users
+    	]);
+	}
 }
